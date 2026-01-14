@@ -1,0 +1,48 @@
+# ============================================================
+# CONFIGURATION (user-editable)
+# ============================================================
+config:
+  jira:
+    url: "https://megacorp.atlassian.net"
+
+  defaults:
+    project_key: "CSD"
+    issue_type: "Task"
+
+  mappings:
+    "?":
+      description: "In progress / planned"
+      jira_status: "In Progress"
+      on_new: create
+
+    "*":
+      description: "Accomplished that day"
+      jira_status: "Done"
+      on_new: create
+
+    "!":
+      description: "Idea for future work"
+      jira_status: "Backlog"
+      on_new: create
+      labels: ["idea"]
+
+    "+":
+      description: "Accomplished later"
+      jira_status: "Done"
+      on_new: ignore
+
+    "~":
+      description: "Abandoned"
+      jira_status: "Won't Do"
+      on_new: ignore
+
+  continuation_keywords:
+    - "continue"
+    - "finish"
+
+  stopwords:
+    - "the"
+    - "a"
+
+# === STATE (managed by plajira, do not edit below) ===
+{"items": {"a1b2c3d4": {"jira_issue_key": "CSD-42", "jira_status": "Done", "lines": ["implement foo"], "last_synced_marker": "*", "last_synced_date": "2026-01-08", "last_synced_commit": "a1b2c3d", "last_synced_timestamp": "2026-01-08T14:32:00Z"}}, "skip": ["lunch", "1:1 with manager"]}
