@@ -190,6 +190,7 @@ def _handle_new_item(
         always = ui.prompt_yes_no(f"Always skip \"{ui.truncate(text, 40)}\"?", default=False)
         if always:
             config.add_to_skip(text)
+            save_config(config)
             print(f"  {ui.dim('Added to skip list.')}")
         return None
 
@@ -313,6 +314,8 @@ def _fallback_after_duplicate(
         always = ui.prompt_yes_no(f"Always skip \"{ui.truncate(text, 40)}\"?", default=False)
         if always:
             config.add_to_skip(text)
+            save_config(config)
+            print(f"  {ui.dim('Added to skip list.')}")
 
     return None
 
