@@ -205,8 +205,8 @@ The configuration file has two sections:
 plajira automatically detects suspected duplicates using:
 
 - Continuation keywords ("continue", "finish", etc.)
-- Word overlap (≥50% of significant words)
-- Fuzzy matching (Levenshtein similarity ≥60%)
+- Word overlap (≥40% of significant words)
+- Fuzzy matching (Levenshtein similarity ≥50%)
 
 When a suspected duplicate is found, you can link it to an existing item instead of creating a new Jira issue.
 
