@@ -34,9 +34,9 @@ classifiers = [
 plajira = "plajira.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/plajira"
-Repository = "https://github.com/yourusername/plajira"
-Issues = "https://github.com/yourusername/plajira/issues"
+Homepage = "https://github.com/plajira"
+Repository = "https://github.com/plajira/plajira"
+Issues = "https://github.com/plajira/plajira/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
