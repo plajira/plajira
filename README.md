@@ -21,7 +21,7 @@ pip install plajira
 Or install from source:
 
 ```bash
-git clone https://github.com/yourusername/plajira.git
+git clone https://github.com/plajira/plajira.git
 cd plajira
 pip install -e .
 ```
@@ -65,13 +65,15 @@ plajira sync
 
 ### Markers
 
-| Marker | Meaning | Jira Status |
-|--------|---------|-------------|
-| `?` | In progress / planned | In Progress |
-| `*` | Accomplished that day | Done |
-| `!` | Idea for future work | Backlog |
-| `+` | Accomplished later | Done |
-| `~` | Abandoned | Won't Do |
+| Marker | Meaning | Jira Status | Creates new issue? |
+|--------|---------|-------------|-------------------|
+| `?` | In progress / planned | In Progress | Yes |
+| `*` | Accomplished that day | Done | Yes |
+| `!` | Idea for future work | Backlog | Yes |
+| `+` | Accomplished later (was `?`) | Done | No - transitions only |
+| `~` | Abandoned (was `?`) | Won't Do | No - transitions only |
+
+Note: `+` and `~` are for transitioning items that were previously tracked as `?`. They won't create new Jira issues.
 
 ## Commands
 
@@ -81,37 +83,44 @@ Initialize plajira configuration in the current directory.
 
 ### `plajira status`
 
-Preview what would happen on sync, without making changes.
+Preview what would happen on sync, with an interactive menu.
 
-```bash
+```
 $ plajira status
 
 Checking .plan for duplicate lines... OK
 Parsing .plan... 34 items
-Checking git status... 3 pushed, 1 unpushed commit
+Checking git status... all commits
 
 New items:
   • "research spec" [SUSPECTED DUPLICATE]
   • "baz spreadsheet"
 
 Status changes:
-  • CSD-42 "implement foobar": In Progress → Done
+  • CSD-42 "implement foobar": In Progress -> Done
+
+Skipped: 3  Up to date: 28
+
+[s] Sync  [v] View skip list  [l] List tracked  [q] Quit
 ```
+
+Press `v` to view the skip list, then `u` to unskip items interactively.
 
 ### `plajira sync`
 
 Synchronize your `.plan` with Jira.
 
-```bash
+```
 $ plajira sync
 
 New item: "implement foobar"
-[y] Create new Jira issue
-[n] Not now
-[d] Duplicate — link to existing
-[s] Skip
 
-Choice [y/n/d/s]: y
+  [y] Create new Jira issue
+  [n] Not now (ask again next sync)
+  [d] Duplicate - link to existing item
+  [s] Skip (don't track in Jira)
+
+Choice [y]: y
 
 ✓ Created CSD-72 "implement foobar"
 ```
@@ -120,8 +129,13 @@ Choice [y/n/d/s]: y
 
 Manually link a `.plan` line to an existing Jira issue.
 
-```bash
+```
 $ plajira link "implement foobar" CSD-42
+
+Fetching CSD-42... found: "Implement foobar" (In Progress)
+
+Link "implement foobar" -> CSD-42? [y/N]: y
+
 ✓ Linked.
 ```
 
@@ -181,10 +195,13 @@ Your .plan shows: * (Done)
 Jira shows: Blocked
   Changed: 2026-01-08 16:45
 
-Options:
+Jira was updated MORE RECENTLY than your .plan change.
+
   [s] Skip this item (recommended)
   [v] View Jira issue in browser
-  [o] Override: force .plan status to Jira
+  [o] Override: force .plan status to Jira (dangerous!)
+
+Choice [s/v/o]:
 ```
 
 ## Requirements

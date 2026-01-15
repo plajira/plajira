@@ -166,19 +166,81 @@ def cmd_status(args: argparse.Namespace) -> int:
                   f"\"{ui.truncate(changed.plan_item.normalized_text, 40)}\": "
                   f"{changed.old_status} -> {changed.target_status}")
 
+    # Show counts instead of full lists
+    counts = []
     if diff.skipped_items:
-        print(f"\n{ui.bold('Skipped (in skip list):')}")
-        for skipped in diff.skipped_items:
-            print(f"  {ui.bullet()} \"{skipped.plan_item.normalized_text}\"")
+        counts.append(f"Skipped: {len(diff.skipped_items)}")
+    counts.append(f"Up to date: {len(diff.up_to_date_items)}")
+    print(f"\n{ui.dim('  '.join(counts))}")
 
-    print(f"\n{ui.dim(f'Up to date: {len(diff.up_to_date_items)} items')}")
+    # Interactive menu
+    if diff.has_changes or diff.skipped_items or config.items:
+        options = []
+        if diff.has_changes:
+            options.append("[s] Sync")
+        if diff.skipped_items:
+            options.append("[v] View skip list")
+        if config.items:
+            options.append("[l] List tracked")
+        options.append("[q] Quit")
 
-    if diff.has_changes:
-        print(f"\nRun '{ui.bold('plajira sync')}' to synchronize.")
+        print(f"\n{ui.dim('  '.join(options))}")
+
+        while True:
+            choice = ui.prompt("", default="q").lower()
+
+            if choice == "q" or choice == "":
+                break
+            elif choice == "s" and diff.has_changes:
+                print(f"\n{ui.dim('Run: plajira sync')}")
+                break
+            elif choice == "v" and diff.skipped_items:
+                _show_skip_list_interactive(config, diff)
+            elif choice == "l" and config.items:
+                _show_tracked_items(config)
+            else:
+                continue
     else:
         print(f"\n{ui.dim('Nothing to sync.')}")
 
     return 0
+
+
+def _show_skip_list_interactive(config: Config, diff) -> None:
+    """Show skip list with option to unskip."""
+    print(f"\n{ui.bold('Skip list:')}")
+    skip_items = [s.plan_item.normalized_text for s in diff.skipped_items]
+    for i, text in enumerate(skip_items, 1):
+        print(f"  [{i}] \"{text}\"")
+
+    print(f"\n{ui.dim('[u] Unskip  [q] Back')}")
+
+    while True:
+        choice = ui.prompt("", default="q").lower()
+
+        if choice == "q" or choice == "":
+            break
+        elif choice == "u":
+            # Prompt for which item to unskip
+            try:
+                num = int(ui.prompt("Enter number to unskip", default=""))
+                if 1 <= num <= len(skip_items):
+                    text = skip_items[num - 1]
+                    config.remove_from_skip(text)
+                    save_config(config)
+                    ui.print_success(f"Removed \"{text}\" from skip list.")
+                    break
+            except ValueError:
+                pass
+
+
+def _show_tracked_items(config: Config) -> None:
+    """Show all tracked items."""
+    print(f"\n{ui.bold('Tracked items:')}")
+    for item in config.items.values():
+        print(f"\n  {ui.format_issue_key(item.jira_issue_key)} ({ui.format_status(item.jira_status)})")
+        for line in item.lines:
+            print(f"    {ui.bullet()} \"{line}\"")
 
 
 def cmd_sync(args: argparse.Namespace) -> int:
