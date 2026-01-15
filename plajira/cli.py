@@ -251,14 +251,39 @@ def _show_skip_list_interactive(config: Config, diff) -> None:
 
 def _show_tracked_items(config: Config) -> None:
     """Show all tracked items."""
-    print(f"\n{ui.bold('Tracked items:')}")
-    for item in config.items.values():
-        print(f"\n  {ui.format_issue_key(item.jira_issue_key)} ({ui.format_status(item.jira_status)})")
-        for line in item.lines:
-            print(f"    {ui.bullet()} \"{line}\"")
+    items_list = list(config.items.values())
+    page_size = 10
+    page = 0
+    total_pages = max(1, (len(items_list) + page_size - 1) // page_size)
 
-    print(f"\n{ui.dim('[q] Back')}")
-    ui.prompt("", default="q")
+    while True:
+        start = page * page_size
+        end = min(start + page_size, len(items_list))
+        page_items = items_list[start:end]
+
+        print(f"\n{ui.bold('Tracked items:')} ({start + 1}-{end} of {len(items_list)})")
+        for item in page_items:
+            print(f"\n  {ui.format_issue_key(item.jira_issue_key)} ({ui.format_status(item.jira_status)})")
+            for line in item.lines:
+                print(f"    {ui.bullet()} \"{line}\"")
+
+        # Build options
+        opts = []
+        if page > 0:
+            opts.append("[p] Prev")
+        if page < total_pages - 1:
+            opts.append("[n] Next")
+        opts.append("[q] Back")
+        print(f"\n{ui.dim('  '.join(opts))}")
+
+        choice = ui.prompt("", default="q").lower()
+
+        if choice == "q" or choice == "":
+            break
+        elif choice == "n" and page < total_pages - 1:
+            page += 1
+        elif choice == "p" and page > 0:
+            page -= 1
 
 
 def _run_sync_from_status(config: Config, items: list, plan_file: str) -> int:
