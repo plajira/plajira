@@ -418,16 +418,17 @@ def cmd_sync(args: argparse.Namespace) -> int:
         return 0
 
     # Build sync plan
-    plan = build_sync_plan(diff, config, jira, plan_file)
+    gojira = getattr(args, 'gojira', False)
+    plan = build_sync_plan(diff, config, jira, plan_file, gojira=gojira)
 
     # Show summary and confirm
-    if not show_sync_summary(plan, config):
+    if not show_sync_summary(plan, config, gojira=gojira):
         print(f"\n{ui.dim('Sync cancelled. No changes made.')}")
         return 0
 
     # Execute
     print()
-    successes, failures = execute_sync(plan, config, jira, ".plajira")
+    successes, failures = execute_sync(plan, config, jira, ".plajira", gojira=gojira)
 
     # Final summary
     print()
@@ -653,6 +654,11 @@ def main() -> int:
 
     # sync
     sync_parser = subparsers.add_parser("sync", help="Synchronize with Jira")
+    sync_parser.add_argument(
+        "--gojira",
+        action="store_true",
+        help="Auto-create new items (still prompts for suspected duplicates, conflicts, and errors)",
+    )
     sync_parser.set_defaults(func=cmd_sync)
 
     # link

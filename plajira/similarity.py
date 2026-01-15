@@ -118,8 +118,8 @@ def is_suspected_duplicate(
 
     An item is flagged as suspected duplicate if ANY of:
     A. Contains a continuation keyword
-    B. >=50% significant word overlap with any existing item
-    C. Levenshtein similarity >= 0.6 with any existing item
+    B. >=40% significant word overlap with any existing item
+    C. Levenshtein similarity >= 0.5 with any existing item
 
     Returns:
         (is_duplicate, reason): Boolean and reason string if duplicate
@@ -141,12 +141,12 @@ def is_suspected_duplicate(
         if new_words and existing_words:
             intersection = len(new_words & existing_words)
             # Check overlap relative to new item's words
-            if intersection / len(new_words) >= 0.5:
+            if intersection / len(new_words) >= 0.4:
                 return True, f"significant word overlap with '{existing}'"
 
-        # Check C: Levenshtein >= 0.6
+        # Check C: Levenshtein >= 0.5
         ratio = levenshtein_ratio(new_item, existing)
-        if ratio >= 0.6:
+        if ratio >= 0.5:
             return True, f"high similarity ({ratio:.0%}) with '{existing}'"
 
     return False, None

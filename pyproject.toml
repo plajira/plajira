@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plajira"
-version = "0.3.1"
+version = "0.4.0"
 description = "Sync your .plan file with Jira Cloud"
 readme = "README.md"
 license = {text = "MIT"}

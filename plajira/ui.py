@@ -115,6 +115,39 @@ def warning_mark() -> str:
     return f"{c.YELLOW}\u26a0{c.RESET}"
 
 
+def gojira(action: str) -> str:
+    """Format a gojira mode action - wild and badass style."""
+    import random
+
+    # All the bright colors to randomize
+    bright_colors = [
+        c.BRIGHT_RED, c.BRIGHT_GREEN, c.BRIGHT_YELLOW,
+        c.BRIGHT_BLUE, c.BRIGHT_MAGENTA, c.BRIGHT_CYAN,
+    ]
+
+    # Pick random colors for different parts
+    c1, c2, c3 = random.sample(bright_colors, 3)
+
+    # Different wild decorators
+    decorators = [
+        ("⚡", "⚡"),
+        ("»»»", "»»»"),
+        ("★", "★"),
+        ("▶▶▶", "◀◀◀"),
+        ("✦✦✦", "✦✦✦"),
+        ("«««", "»»»"),
+        ("◆◆◆", "◆◆◆"),
+        (">>", "<<"),
+        ("///", "///"),
+        ("~~~", "~~~"),
+    ]
+
+    left, right = random.choice(decorators)
+
+    # Build the wild output
+    return f"{c1}{c.BOLD}{left} GOJIRA {right}{c.RESET} {c2}{action}{c.RESET}"
+
+
 def bullet() -> str:
     """Return a bullet point."""
     return "\u2022"
