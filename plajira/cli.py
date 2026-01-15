@@ -560,20 +560,46 @@ def cmd_list(args: argparse.Namespace) -> int:
         return 0
 
     if config.items:
-        ui.print_header("Tracked Items")
-
-        # Group by Jira issue
-        for item_uuid, item in config.items.items():
-            print(f"\n{ui.format_issue_key(item.jira_issue_key)} ({ui.format_status(item.jira_status)})")
-            for line in item.lines:
-                print(f"  {ui.bullet()} \"{line}\"")
+        _show_tracked_items(config)
 
     if config.skip:
-        ui.print_header("Skip List")
-        for line in config.skip:
-            print(f"  {ui.bullet()} \"{line}\"")
+        _show_skip_list(config)
 
     return 0
+
+
+def _show_skip_list(config: Config) -> None:
+    """Show skip list with pagination (non-interactive, no unskip option)."""
+    page_size = 10
+    page = 0
+    total_pages = max(1, (len(config.skip) + page_size - 1) // page_size)
+
+    while True:
+        start = page * page_size
+        end = min(start + page_size, len(config.skip))
+        page_items = config.skip[start:end]
+
+        print(f"\n{ui.bold('Skip list:')} ({start + 1}-{end} of {len(config.skip)})")
+        for text in page_items:
+            print(f"  {ui.bullet()} \"{text}\"")
+
+        # Build options
+        opts = []
+        if page > 0:
+            opts.append("[p] Prev")
+        if page < total_pages - 1:
+            opts.append("[n] Next")
+        opts.append("[q] Back")
+        print(f"\n{ui.dim('  '.join(opts))}")
+
+        choice = ui.prompt("", default="q").lower()
+
+        if choice == "q" or choice == "":
+            break
+        elif choice == "n" and page < total_pages - 1:
+            page += 1
+        elif choice == "p" and page > 0:
+            page -= 1
 
 
 def cmd_unskip(args: argparse.Namespace) -> int:
