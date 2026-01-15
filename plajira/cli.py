@@ -175,18 +175,17 @@ def cmd_status(args: argparse.Namespace) -> int:
 
     # Interactive menu
     if diff.has_changes or diff.skipped_items or config.items:
-        options = []
-        if diff.has_changes:
-            options.append("[s] Sync")
-        if diff.skipped_items:
-            options.append("[v] View skip list")
-        if config.items:
-            options.append("[l] List tracked")
-        options.append("[q] Quit")
-
-        print(f"\n{ui.dim('  '.join(options))}")
-
         while True:
+            options = []
+            if diff.has_changes:
+                options.append("[s] Sync")
+            if diff.skipped_items:
+                options.append("[v] View skip list")
+            if config.items:
+                options.append("[l] List tracked")
+            options.append("[q] Quit")
+
+            print(f"\n{ui.dim('  '.join(options))}")
             choice = ui.prompt("", default="q").lower()
 
             if choice == "q" or choice == "":
