@@ -204,18 +204,37 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def _show_skip_list_interactive(config: Config, diff) -> None:
     """Show skip list with option to unskip."""
-    print(f"\n{ui.bold('Skip list:')}")
     skip_items = [s.plan_item.normalized_text for s in diff.skipped_items]
-    for i, text in enumerate(skip_items, 1):
-        print(f"  [{i}] \"{text}\"")
-
-    print(f"\n{ui.dim('[u] Unskip  [q] Back')}")
+    page_size = 10
+    page = 0
+    total_pages = (len(skip_items) + page_size - 1) // page_size
 
     while True:
+        start = page * page_size
+        end = min(start + page_size, len(skip_items))
+        page_items = skip_items[start:end]
+
+        print(f"\n{ui.bold('Skip list:')} ({start + 1}-{end} of {len(skip_items)})")
+        for i, text in enumerate(page_items, start + 1):
+            print(f"  [{i}] \"{text}\"")
+
+        # Build options
+        opts = []
+        if page > 0:
+            opts.append("[p] Prev")
+        if page < total_pages - 1:
+            opts.append("[n] Next")
+        opts.extend(["[u] Unskip", "[q] Back"])
+        print(f"\n{ui.dim('  '.join(opts))}")
+
         choice = ui.prompt("", default="q").lower()
 
         if choice == "q" or choice == "":
             break
+        elif choice == "n" and page < total_pages - 1:
+            page += 1
+        elif choice == "p" and page > 0:
+            page -= 1
         elif choice == "u":
             # Prompt for which item to unskip
             try:
