@@ -128,6 +128,7 @@ def _handle_new_item(
     jira: JiraClient,
     plan_file: str,
     pending_creates: list[CreateAction],
+    gojira: bool = False,
 ) -> CreateAction | LinkAction | None:
     """Handle a new item interactively.
 
@@ -150,14 +151,18 @@ def _handle_new_item(
         print(f"  {ui.dim(f'Marker {marker} has on_new=ignore, skipping.')}")
         return None
 
-    choices = [
-        ("y", "Create new Jira issue"),
-        ("n", "Not now (ask again next sync)"),
-        ("d", "Duplicate - link to existing item"),
-        ("s", "Skip (don't track in Jira)"),
-    ]
-
-    choice = ui.prompt_choices("", choices, default="y" if not new_item.is_suspected_duplicate else "d")
+    # In gojira mode, auto-create unless it's a suspected duplicate
+    if gojira and not new_item.is_suspected_duplicate:
+        choice = "y"
+        print(f"  {ui.dim('[gojira] Auto-creating...')}")
+    else:
+        choices = [
+            ("y", "Create new Jira issue"),
+            ("n", "Not now (ask again next sync)"),
+            ("d", "Duplicate - link to existing item"),
+            ("s", "Skip (don't track in Jira)"),
+        ]
+        choice = ui.prompt_choices("", choices, default="y" if not new_item.is_suspected_duplicate else "d")
 
     if choice == "y":
         # Create new issue
@@ -434,6 +439,7 @@ def build_sync_plan(
     config: Config,
     jira: JiraClient,
     plan_file: str,
+    gojira: bool = False,
 ) -> SyncPlan:
     """Build a sync plan by processing diff items interactively."""
     plan = SyncPlan()
@@ -444,7 +450,7 @@ def build_sync_plan(
         ui.print_header(f"Processing {len(diff.new_items)} new items")
 
         for new_item in diff.new_items:
-            result = _handle_new_item(new_item, config, jira, plan_file, pending_creates)
+            result = _handle_new_item(new_item, config, jira, plan_file, pending_creates, gojira=gojira)
 
             if isinstance(result, CreateAction):
                 pending_creates.append(result)
@@ -481,7 +487,7 @@ def build_sync_plan(
     return plan
 
 
-def show_sync_summary(plan: SyncPlan, config: Config) -> bool:
+def show_sync_summary(plan: SyncPlan, config: Config, gojira: bool = False) -> bool:
     """Show sync summary and prompt for confirmation."""
     if not plan.has_actions:
         print(f"\n{ui.dim('Nothing to sync.')}")
@@ -525,6 +531,9 @@ def show_sync_summary(plan: SyncPlan, config: Config) -> bool:
             print(f"    {ui.dim('Jira updated more recently')}")
 
     print("\n" + "-" * 40)
+    if gojira:
+        print(f"{ui.dim('[gojira] Auto-confirming...')}")
+        return True
     return ui.prompt_yes_no("Proceed with updates?", default=False)
 
 
@@ -533,6 +542,7 @@ def execute_sync(
     config: Config,
     jira: JiraClient,
     config_path: str,
+    gojira: bool = False,
 ) -> tuple[int, int]:
     """Execute the sync plan.
 
@@ -595,33 +605,45 @@ def execute_sync(
             jira_trans = jira.find_transition_to_status(trans.jira_key, trans.to_status)
 
             if not jira_trans:
-                # Transition not available - ask user what to do
-                print(f"\n{ui.warning_mark()} Cannot transition {ui.format_issue_key(trans.jira_key)} to \"{trans.to_status}\"")
-                print(f"  {ui.dim('This transition is not available from the current status.')}")
-
-                choices = [
-                    ("s", "Skip this transition"),
-                    ("v", "View issue in browser"),
-                    ("r", "Retry (after manually fixing in Jira)"),
-                ]
-
-                while True:
-                    choice = ui.prompt_choices("What would you like to do?", choices, default="s")
-
-                    if choice == "s":
-                        failures += 1
-                        break
-                    elif choice == "v":
-                        url = jira.get_issue_url(trans.jira_key)
-                        webbrowser.open(url)
-                    elif choice == "r":
-                        jira_trans = jira.find_transition_to_status(trans.jira_key, trans.to_status)
-                        if jira_trans:
-                            break
-                        print(f"  {ui.dim('Transition still not available.')}")
+                # Transition not available - in gojira mode, auto-retry once
+                if gojira:
+                    print(f"\n{ui.warning_mark()} Cannot transition {ui.format_issue_key(trans.jira_key)} to \"{trans.to_status}\"")
+                    print(f"  {ui.dim('[gojira] Auto-retrying...')}")
+                    jira_trans = jira.find_transition_to_status(trans.jira_key, trans.to_status)
+                    if jira_trans:
+                        pass  # Continue to execute transition
+                    else:
+                        # Auto-retry failed, now prompt user
+                        print(f"  {ui.dim('Transition still not available after retry.')}")
 
                 if not jira_trans:
-                    continue
+                    # Ask user what to do
+                    print(f"\n{ui.warning_mark()} Cannot transition {ui.format_issue_key(trans.jira_key)} to \"{trans.to_status}\"")
+                    print(f"  {ui.dim('This transition is not available from the current status.')}")
+
+                    choices = [
+                        ("s", "Skip this transition"),
+                        ("v", "View issue in browser"),
+                        ("r", "Retry (after manually fixing in Jira)"),
+                    ]
+
+                    while True:
+                        choice = ui.prompt_choices("What would you like to do?", choices, default="s")
+
+                        if choice == "s":
+                            failures += 1
+                            break
+                        elif choice == "v":
+                            url = jira.get_issue_url(trans.jira_key)
+                            webbrowser.open(url)
+                        elif choice == "r":
+                            jira_trans = jira.find_transition_to_status(trans.jira_key, trans.to_status)
+                            if jira_trans:
+                                break
+                            print(f"  {ui.dim('Transition still not available.')}")
+
+                    if not jira_trans:
+                        continue
 
             # Execute transition
             jira.transition_issue(trans.jira_key, jira_trans.id)

@@ -136,6 +136,17 @@ Choice [y]: y
 ✓ Created CSD-72 "implement foobar"
 ```
 
+#### `--gojira` mode
+
+Use `plajira sync --gojira` to auto-create new items without prompting. This is useful for batch operations or CI pipelines.
+
+In gojira mode:
+- New items are automatically created (no prompt)
+- Suspected duplicates still prompt for user input
+- Conflicts still prompt for user input
+- Transition failures auto-retry once, then prompt if still failing
+- Final confirmation is auto-approved
+
 ### `plajira link <text> <jira-key>`
 
 Manually link a `.plan` line to an existing Jira issue.
