@@ -154,7 +154,7 @@ def _handle_new_item(
     # In gojira mode, auto-create unless it's a suspected duplicate
     if gojira and not new_item.is_suspected_duplicate:
         choice = "y"
-        print(f"  {ui.dim('[gojira] Auto-creating...')}")
+        print(f"  {ui.gojira('Auto-creating...')}")
     else:
         choices = [
             ("y", "Create new Jira issue"),
@@ -532,7 +532,7 @@ def show_sync_summary(plan: SyncPlan, config: Config, gojira: bool = False) -> b
 
     print("\n" + "-" * 40)
     if gojira:
-        print(f"{ui.dim('[gojira] Auto-confirming...')}")
+        print(ui.gojira("Auto-confirming..."))
         return True
     return ui.prompt_yes_no("Proceed with updates?", default=False)
 
@@ -608,7 +608,7 @@ def execute_sync(
                 # Transition not available - in gojira mode, auto-retry once
                 if gojira:
                     print(f"\n{ui.warning_mark()} Cannot transition {ui.format_issue_key(trans.jira_key)} to \"{trans.to_status}\"")
-                    print(f"  {ui.dim('[gojira] Auto-retrying...')}")
+                    print(f"  {ui.gojira('Auto-retrying...')}")
                     jira_trans = jira.find_transition_to_status(trans.jira_key, trans.to_status)
                     if jira_trans:
                         pass  # Continue to execute transition

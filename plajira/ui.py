@@ -115,6 +115,22 @@ def warning_mark() -> str:
     return f"{c.YELLOW}\u26a0{c.RESET}"
 
 
+def gojira(action: str) -> str:
+    """Format a gojira mode action - wild and badass style."""
+    import random
+
+    # Different wild styles to randomize between
+    styles = [
+        f"{c.BRIGHT_MAGENTA}{c.BOLD}⚡ GOJIRA ⚡{c.RESET} {c.BRIGHT_CYAN}{action}{c.RESET}",
+        f"{c.BRIGHT_CYAN}{c.BOLD}»»» GOJIRA »»»{c.RESET} {c.BRIGHT_MAGENTA}{action}{c.RESET}",
+        f"{c.BRIGHT_YELLOW}{c.BOLD}★ GOJIRA ★{c.RESET} {c.BRIGHT_GREEN}{action}{c.RESET}",
+        f"{c.BRIGHT_GREEN}{c.BOLD}▶▶▶ GOJIRA{c.RESET} {c.BRIGHT_YELLOW}{action}{c.RESET}",
+        f"{c.BRIGHT_MAGENTA}✦{c.BRIGHT_CYAN}✦{c.BRIGHT_YELLOW}✦{c.RESET} {c.BOLD}GOJIRA{c.RESET} {c.BRIGHT_MAGENTA}✦{c.BRIGHT_CYAN}✦{c.BRIGHT_YELLOW}✦{c.RESET} {c.BRIGHT_CYAN}{action}{c.RESET}",
+    ]
+
+    return random.choice(styles)
+
+
 def bullet() -> str:
     """Return a bullet point."""
     return "\u2022"
