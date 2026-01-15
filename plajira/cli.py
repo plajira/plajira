@@ -238,6 +238,9 @@ def _show_tracked_items(config: Config) -> None:
         for line in item.lines:
             print(f"    {ui.bullet()} \"{line}\"")
 
+    print(f"\n{ui.dim('[q] Back')}")
+    ui.prompt("", default="q")
+
 
 def _run_sync_from_status(config: Config, items: list, plan_file: str) -> int:
     """Run sync from status menu (config and items already loaded)."""
