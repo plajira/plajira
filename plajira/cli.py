@@ -191,14 +191,11 @@ def cmd_status(args: argparse.Namespace) -> int:
             if choice == "q" or choice == "":
                 break
             elif choice == "s" and diff.has_changes:
-                print(f"\n{ui.dim('Run: plajira sync')}")
-                break
+                return _run_sync_from_status(config, items, plan_file)
             elif choice == "v" and diff.skipped_items:
                 _show_skip_list_interactive(config, diff)
             elif choice == "l" and config.items:
                 _show_tracked_items(config)
-            else:
-                continue
     else:
         print(f"\n{ui.dim('Nothing to sync.')}")
 
@@ -240,6 +237,56 @@ def _show_tracked_items(config: Config) -> None:
         print(f"\n  {ui.format_issue_key(item.jira_issue_key)} ({ui.format_status(item.jira_status)})")
         for line in item.lines:
             print(f"    {ui.bullet()} \"{line}\"")
+
+
+def _run_sync_from_status(config: Config, items: list, plan_file: str) -> int:
+    """Run sync from status menu (config and items already loaded)."""
+    # Check credentials
+    if not config.jira.url or not config.jira.email or not config.jira.token:
+        ui.print_error("Jira credentials not configured. Check .env file.")
+        return 1
+
+    # Initialize Jira client
+    jira = JiraClient(config.jira.url, config.jira.email, config.jira.token)
+
+    # Test connection
+    print("\nConnecting to Jira...", end=" ")
+    try:
+        user = jira.test_connection()
+        print(ui.success(f"OK (logged in as {user})"))
+    except JiraError as e:
+        print(ui.error("FAILED"))
+        ui.print_error(f"Could not connect to Jira: {e}")
+        return 1
+
+    # Compute diff
+    diff = compute_diff(items, config)
+
+    if not diff.has_changes:
+        print(f"\n{ui.dim('Nothing to sync. Everything is up to date.')}")
+        return 0
+
+    # Build sync plan
+    plan = build_sync_plan(diff, config, jira, plan_file)
+
+    # Show summary and confirm
+    if not show_sync_summary(plan, config):
+        print(f"\n{ui.dim('Sync cancelled. No changes made.')}")
+        return 0
+
+    # Execute
+    print()
+    successes, failures = execute_sync(plan, config, jira, ".plajira")
+
+    # Final summary
+    print()
+    if failures == 0:
+        ui.print_success(f"Sync complete. {successes} items updated.")
+    else:
+        ui.print_warning(f"Partial sync: {successes} succeeded, {failures} failed.")
+        print(f"{ui.dim('Run plajira sync again to retry failed items.')}")
+
+    return 0 if failures == 0 else 1
 
 
 def cmd_sync(args: argparse.Namespace) -> int:
