@@ -126,7 +126,13 @@ def compute_diff(
         found = config.find_item_by_line(normalized)
 
         if found is None:
-            # New item - check for suspected duplicate
+            # New item - check if marker has on_new: ignore
+            mapping = config.get_mapping(plan_item.marker)
+            if mapping and mapping.on_new == "ignore":
+                # Silently ignore - markers like + and ~ only transition existing items
+                continue
+
+            # Check for suspected duplicate
             is_dup, reason = is_suspected_duplicate(
                 normalized,
                 all_tracked_texts,
