@@ -104,7 +104,18 @@ Skipped: 3  Up to date: 28
 [s] Sync  [v] View skip list  [l] List tracked  [q] Quit
 ```
 
-Press `v` to view the skip list, then `u` to unskip items interactively.
+Press `v` to view the skip list:
+
+```
+Skip list: (1-3 of 3)
+  [1] "old task from last year"
+  [2] "not really a task"
+  [3] "duplicate entry"
+
+[u] Unskip  [q] Back
+```
+
+Press `u` to unskip items by number. Lists with more than 10 items show `[p] Prev` and `[n] Next` for pagination.
 
 ### `plajira sync`
 
@@ -145,7 +156,24 @@ Remove tracking for a line (doesn't affect Jira).
 
 ### `plajira list`
 
-Show all tracked items and skip list.
+Show all tracked items and skip list with interactive pagination.
+
+```
+$ plajira list
+
+Tracked items: (1-2 of 2)
+
+  CSD-42 (Done)
+    • "implement foobar"
+
+  CSD-71 (In Progress)
+    • "research spec"
+    • "continue research spec"
+
+[q] Back
+```
+
+After pressing `q`, the skip list is shown (if any). Lists with more than 10 items show `[p] Prev` and `[n] Next` for pagination.
 
 ### `plajira unskip <text>`
 

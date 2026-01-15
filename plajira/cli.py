@@ -175,31 +175,27 @@ def cmd_status(args: argparse.Namespace) -> int:
 
     # Interactive menu
     if diff.has_changes or diff.skipped_items or config.items:
-        options = []
-        if diff.has_changes:
-            options.append("[s] Sync")
-        if diff.skipped_items:
-            options.append("[v] View skip list")
-        if config.items:
-            options.append("[l] List tracked")
-        options.append("[q] Quit")
-
-        print(f"\n{ui.dim('  '.join(options))}")
-
         while True:
+            options = []
+            if diff.has_changes:
+                options.append("[s] Sync")
+            if diff.skipped_items:
+                options.append("[v] View skip list")
+            if config.items:
+                options.append("[l] List tracked")
+            options.append("[q] Quit")
+
+            print(f"\n{ui.dim('  '.join(options))}")
             choice = ui.prompt("", default="q").lower()
 
             if choice == "q" or choice == "":
                 break
             elif choice == "s" and diff.has_changes:
-                print(f"\n{ui.dim('Run: plajira sync')}")
-                break
+                return _run_sync_from_status(config, items, plan_file)
             elif choice == "v" and diff.skipped_items:
                 _show_skip_list_interactive(config, diff)
             elif choice == "l" and config.items:
                 _show_tracked_items(config)
-            else:
-                continue
     else:
         print(f"\n{ui.dim('Nothing to sync.')}")
 
@@ -208,18 +204,37 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def _show_skip_list_interactive(config: Config, diff) -> None:
     """Show skip list with option to unskip."""
-    print(f"\n{ui.bold('Skip list:')}")
     skip_items = [s.plan_item.normalized_text for s in diff.skipped_items]
-    for i, text in enumerate(skip_items, 1):
-        print(f"  [{i}] \"{text}\"")
-
-    print(f"\n{ui.dim('[u] Unskip  [q] Back')}")
+    page_size = 10
+    page = 0
+    total_pages = (len(skip_items) + page_size - 1) // page_size
 
     while True:
+        start = page * page_size
+        end = min(start + page_size, len(skip_items))
+        page_items = skip_items[start:end]
+
+        print(f"\n{ui.bold('Skip list:')} ({start + 1}-{end} of {len(skip_items)})")
+        for i, text in enumerate(page_items, start + 1):
+            print(f"  [{i}] \"{text}\"")
+
+        # Build options
+        opts = []
+        if page > 0:
+            opts.append("[p] Prev")
+        if page < total_pages - 1:
+            opts.append("[n] Next")
+        opts.extend(["[u] Unskip", "[q] Back"])
+        print(f"\n{ui.dim('  '.join(opts))}")
+
         choice = ui.prompt("", default="q").lower()
 
         if choice == "q" or choice == "":
             break
+        elif choice == "n" and page < total_pages - 1:
+            page += 1
+        elif choice == "p" and page > 0:
+            page -= 1
         elif choice == "u":
             # Prompt for which item to unskip
             try:
@@ -236,11 +251,89 @@ def _show_skip_list_interactive(config: Config, diff) -> None:
 
 def _show_tracked_items(config: Config) -> None:
     """Show all tracked items."""
-    print(f"\n{ui.bold('Tracked items:')}")
-    for item in config.items.values():
-        print(f"\n  {ui.format_issue_key(item.jira_issue_key)} ({ui.format_status(item.jira_status)})")
-        for line in item.lines:
-            print(f"    {ui.bullet()} \"{line}\"")
+    items_list = list(config.items.values())
+    page_size = 10
+    page = 0
+    total_pages = max(1, (len(items_list) + page_size - 1) // page_size)
+
+    while True:
+        start = page * page_size
+        end = min(start + page_size, len(items_list))
+        page_items = items_list[start:end]
+
+        print(f"\n{ui.bold('Tracked items:')} ({start + 1}-{end} of {len(items_list)})")
+        for item in page_items:
+            print(f"\n  {ui.format_issue_key(item.jira_issue_key)} ({ui.format_status(item.jira_status)})")
+            for line in item.lines:
+                print(f"    {ui.bullet()} \"{line}\"")
+
+        # Build options
+        opts = []
+        if page > 0:
+            opts.append("[p] Prev")
+        if page < total_pages - 1:
+            opts.append("[n] Next")
+        opts.append("[q] Back")
+        print(f"\n{ui.dim('  '.join(opts))}")
+
+        choice = ui.prompt("", default="q").lower()
+
+        if choice == "q" or choice == "":
+            break
+        elif choice == "n" and page < total_pages - 1:
+            page += 1
+        elif choice == "p" and page > 0:
+            page -= 1
+
+
+def _run_sync_from_status(config: Config, items: list, plan_file: str) -> int:
+    """Run sync from status menu (config and items already loaded)."""
+    # Check credentials
+    if not config.jira.url or not config.jira.email or not config.jira.token:
+        ui.print_error("Jira credentials not configured. Check .env file.")
+        return 1
+
+    # Initialize Jira client
+    jira = JiraClient(config.jira.url, config.jira.email, config.jira.token)
+
+    # Test connection
+    print("\nConnecting to Jira...", end=" ")
+    try:
+        user = jira.test_connection()
+        print(ui.success(f"OK (logged in as {user})"))
+    except JiraError as e:
+        print(ui.error("FAILED"))
+        ui.print_error(f"Could not connect to Jira: {e}")
+        return 1
+
+    # Compute diff
+    diff = compute_diff(items, config)
+
+    if not diff.has_changes:
+        print(f"\n{ui.dim('Nothing to sync. Everything is up to date.')}")
+        return 0
+
+    # Build sync plan
+    plan = build_sync_plan(diff, config, jira, plan_file)
+
+    # Show summary and confirm
+    if not show_sync_summary(plan, config):
+        print(f"\n{ui.dim('Sync cancelled. No changes made.')}")
+        return 0
+
+    # Execute
+    print()
+    successes, failures = execute_sync(plan, config, jira, ".plajira")
+
+    # Final summary
+    print()
+    if failures == 0:
+        ui.print_success(f"Sync complete. {successes} items updated.")
+    else:
+        ui.print_warning(f"Partial sync: {successes} succeeded, {failures} failed.")
+        print(f"{ui.dim('Run plajira sync again to retry failed items.')}")
+
+    return 0 if failures == 0 else 1
 
 
 def cmd_sync(args: argparse.Namespace) -> int:
@@ -467,20 +560,46 @@ def cmd_list(args: argparse.Namespace) -> int:
         return 0
 
     if config.items:
-        ui.print_header("Tracked Items")
-
-        # Group by Jira issue
-        for item_uuid, item in config.items.items():
-            print(f"\n{ui.format_issue_key(item.jira_issue_key)} ({ui.format_status(item.jira_status)})")
-            for line in item.lines:
-                print(f"  {ui.bullet()} \"{line}\"")
+        _show_tracked_items(config)
 
     if config.skip:
-        ui.print_header("Skip List")
-        for line in config.skip:
-            print(f"  {ui.bullet()} \"{line}\"")
+        _show_skip_list(config)
 
     return 0
+
+
+def _show_skip_list(config: Config) -> None:
+    """Show skip list with pagination (non-interactive, no unskip option)."""
+    page_size = 10
+    page = 0
+    total_pages = max(1, (len(config.skip) + page_size - 1) // page_size)
+
+    while True:
+        start = page * page_size
+        end = min(start + page_size, len(config.skip))
+        page_items = config.skip[start:end]
+
+        print(f"\n{ui.bold('Skip list:')} ({start + 1}-{end} of {len(config.skip)})")
+        for text in page_items:
+            print(f"  {ui.bullet()} \"{text}\"")
+
+        # Build options
+        opts = []
+        if page > 0:
+            opts.append("[p] Prev")
+        if page < total_pages - 1:
+            opts.append("[n] Next")
+        opts.append("[q] Back")
+        print(f"\n{ui.dim('  '.join(opts))}")
+
+        choice = ui.prompt("", default="q").lower()
+
+        if choice == "q" or choice == "":
+            break
+        elif choice == "n" and page < total_pages - 1:
+            page += 1
+        elif choice == "p" and page > 0:
+            page -= 1
 
 
 def cmd_unskip(args: argparse.Namespace) -> int:
