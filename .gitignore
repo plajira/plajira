@@ -1,5 +1,3 @@
-.venv-plajira/
-
 *.md
 !README.md
 
@@ -31,6 +29,7 @@ venv/
 ENV/
 env/
 .venv/
+.venv-plajira/
 
 # IDE
 .idea/
