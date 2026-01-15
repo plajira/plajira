@@ -332,9 +332,19 @@ def _handle_changed_item(
         issue = jira.get_issue(changed.tracked_item.jira_issue_key)
     except JiraError as e:
         if e.status_code == 404:
-            print(f"  {ui.warning(f'Issue {changed.tracked_item.jira_issue_key} not found in Jira (deleted?)')}")
-            # Remove from tracking
-            config.unlink_line(changed.plan_item.normalized_text)
+            print(f"\n{ui.warning(f'Issue {changed.tracked_item.jira_issue_key} not found in Jira (deleted?)')}")
+            print(f"  \"{changed.plan_item.normalized_text}\"")
+            choice = ui.prompt_choices(
+                "What would you like to do?",
+                [
+                    ("u", "Unlink (stop tracking this item)"),
+                    ("s", "Skip for now"),
+                ],
+            )
+            if choice == "u":
+                config.unlink_line(changed.plan_item.normalized_text)
+                save_config(config)
+                print(f"  {ui.dim('Removed from tracking.')}")
             return None
         raise
 
