@@ -153,15 +153,26 @@ def compute_diff(
                 mapping = config.get_mapping(plan_item.marker)
                 target_status = mapping.jira_status if mapping else ""
 
-                diff.changed_items.append(ChangedItem(
-                    plan_item=plan_item,
-                    item_uuid=item_uuid,
-                    tracked_item=tracked_item,
-                    old_marker=tracked_item.last_synced_marker,
-                    new_marker=plan_item.marker,
-                    old_status=tracked_item.jira_status,
-                    target_status=target_status,
-                ))
+                # Only flag as changed if target status differs from current status
+                # (handles multiple lines linked to same issue with different markers
+                # that map to the same status, e.g., * and + both -> Done)
+                if target_status.lower() != tracked_item.jira_status.lower():
+                    diff.changed_items.append(ChangedItem(
+                        plan_item=plan_item,
+                        item_uuid=item_uuid,
+                        tracked_item=tracked_item,
+                        old_marker=tracked_item.last_synced_marker,
+                        new_marker=plan_item.marker,
+                        old_status=tracked_item.jira_status,
+                        target_status=target_status,
+                    ))
+                else:
+                    # Already in target status - treat as up to date
+                    diff.up_to_date_items.append(UpToDateItem(
+                        plan_item=plan_item,
+                        item_uuid=item_uuid,
+                        tracked_item=tracked_item,
+                    ))
             else:
                 diff.up_to_date_items.append(UpToDateItem(
                     plan_item=plan_item,

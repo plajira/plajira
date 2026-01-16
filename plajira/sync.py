@@ -370,6 +370,20 @@ def _handle_changed_item(
         conflict.jira_status = issue.status
         return conflict
 
+    # Check if already in target status (no transition needed)
+    if issue.status.lower() == changed.target_status.lower():
+        print(f"  {ui.dim(f'Already in {issue.status} - updating marker only.')}")
+        # Update state to reflect new marker without transitioning
+        config.update_item(
+            item_uuid=changed.item_uuid,
+            jira_status=issue.status,
+            marker=changed.plan_item.marker,
+            date=changed.plan_item.date,
+            commit="",
+        )
+        save_config(config)
+        return None
+
     # No conflict - prepare transition
     comment = _select_commit_messages(commits, changed.plan_item.normalized_text)
 
