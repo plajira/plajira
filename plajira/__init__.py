@@ -1,3 +1,7 @@
 """plajira: Sync your .plan file with Jira Cloud."""
+from importlib.metadata import PackageNotFoundError, version
 
-__version__ = "0.4.2"
+try:
+    __version__ = version("plajira")
+except PackageNotFoundError:
+    __version__ = "dev"
